@@ -32,6 +32,26 @@ The public fitting workflow is composed of these callable stages:
   and ``FitSimulation`` performs the iterative fit. Conversion and observer
   utilities are also exported from ``grss.fit``.
 
+For an initialized ``FitSimulation``, ``compute_residuals_and_partials()``
+evaluates the current nominal orbit without applying a least-squares state
+correction. It returns the residuals and partial derivatives, stores the
+propagated simulations, and updates the observation table's residual columns.
+``filter_lsq()`` calls this same method during each fitting iteration.
+The main linearized fitting stages can also be called explicitly on an
+initialized ``FitSimulation``::
+
+    fit.prepare_priors()
+    residuals, partials = fit.compute_residuals_and_partials()
+    rms_u, rms_w, chi_sq = fit.compute_fit_statistics(partials, residuals)
+    delta_x = fit.solve_state_correction(partials, residuals)
+
+These calls expose the intermediate results. ``solve_state_correction``
+returns a proposed correction and does not update the nominal orbit;
+``filter_lsq`` manages the complete iteration, including applying corrections,
+convergence checks, and outlier rejection. Outlier rejection through
+``compute_fit_statistics(..., start_rejecting=True)`` requires a covariance
+from a previous correction.
+
 The optical measurements are acquired using the `Minor Planet Center API <https://minorplanetcenter.net/mpcops/documentation/observations-api/>`_, and the radar measurements are acquired using the `JPL Small-body Radar API <https://ssd-api.jpl.nasa.gov/doc/sb_radar.html>`_. The optical astrometry is preprocessed to account for the following :
 
 #. Star catalog biases [#]_

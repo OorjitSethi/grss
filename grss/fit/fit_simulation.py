@@ -630,10 +630,13 @@ class FitSimulation:
             raise ValueError(msg)
         return None
 
-    def _check_priors(self):
+    def prepare_priors(self):
         """
-        Check the prior estimates and sigmas provided by the user
-        and make sure they are valid.
+        Validate and prepare any prior estimates and sigmas for fitting.
+
+        Call this after setting ``prior_est`` and ``prior_sig`` and before
+        solving a state correction outside ``filter_lsq``. The method updates
+        the internal prior information matrix and offset.
 
         Returns
         -------
@@ -1572,10 +1575,13 @@ class FitSimulation:
             return self._get_analytic_partials(prop_sim_past, prop_sim_future)
         return self._get_numeric_partials(prop_sim_past, prop_sim_future, perturbation_info)
 
-    def _get_residuals_and_partials(self):
+    def compute_residuals_and_partials(self):
         """
-        Computes the residuals and partials of the observations with respect to the
-        initial nominal state.
+        Compute residuals and partial derivatives for the current nominal state.
+
+        This method propagates the current orbit, stores the propagation results
+        in ``prop_sims``, and updates residual columns in ``obs``. It does not
+        apply a least-squares state correction.
 
         Returns
         -------
@@ -1634,10 +1640,14 @@ class FitSimulation:
         self.obs['resDoppler'] = doppler_res
         return residuals, partials
 
-    def _get_rms_and_reject_outliers(self, partials, residuals, start_rejecting):
+    def compute_fit_statistics(self, partials, residuals, start_rejecting=False):
         # sourcery skip: low-code-quality
         """
-        Outlier rejection algorithm for the residuals.
+        Compute fit statistics and optionally apply outlier rejection.
+
+        When ``start_rejecting`` is True, a covariance from a prior state
+        correction must be available. The method updates observation selection
+        and chi-squared columns as well as the rejected-observation count.
 
         Parameters
         ----------
@@ -1646,8 +1656,8 @@ class FitSimulation:
             initial nominal state.
         residuals : array
             The residuals of the observations
-        start_rejecting : bool
-            Flag for whether to start rejecting outliers.
+        start_rejecting : bool, optional
+            Whether to start rejecting outliers, by default False.
 
         Returns
         -------
@@ -1794,9 +1804,13 @@ class FitSimulation:
             self.converged = True
         return None
 
-    def _get_lsq_state_correction(self, partials, residuals):
+    def solve_state_correction(self, partials, residuals):
         """
-        Get the state correction using least-squares.
+        Solve the linearized least-squares state correction.
+
+        Call ``prepare_priors`` first if prior constraints are set. This method
+        updates ``covariance`` and ``info_mats`` but does not apply the returned
+        correction to ``x_nom``.
 
         Parameters
         ----------
@@ -1860,7 +1874,7 @@ class FitSimulation:
         None : NoneType
             None
         """
-        self._check_priors()
+        self.prepare_priors()
         start_rejecting = False
         if verbose:
             print("Iteration\t\tUnweighted RMS\t\tWeighted RMS",
@@ -1878,14 +1892,14 @@ class FitSimulation:
                     print(dict(zip(self.x_nom.keys(), a_priori_constant-self._prior_constant)))
             self.n_iter = i+1
             # get residuals and partials
-            residuals, partials = self._get_residuals_and_partials()
+            residuals, partials = self.compute_residuals_and_partials()
             # calculate rms and reject outliers here if desired
-            rms_u, rms_w, chi_sq = self._get_rms_and_reject_outliers(partials, residuals,
+            rms_u, rms_w, chi_sq = self.compute_fit_statistics(partials, residuals,
                                                                             start_rejecting)
             # get current state
             curr_state = list(self.x_nom.values())
             # get state correction
-            delta_x = self._get_lsq_state_correction(partials, residuals)
+            delta_x = self.solve_state_correction(partials, residuals)
             if self.constraint_dir is not None:
                 constr_hat = self.constraint_dir/np.linalg.norm(self.constraint_dir)
                 delta_x -= np.dot(delta_x, constr_hat)*constr_hat
@@ -1932,8 +1946,8 @@ class FitSimulation:
                     break
         # add postfit iteration if converged
         if self.converged:
-            residuals, partials = self._get_residuals_and_partials()
-            rms_u, rms_w, chi_sq = self._get_rms_and_reject_outliers(partials, residuals,
+            residuals, partials = self.compute_residuals_and_partials()
+            rms_u, rms_w, chi_sq = self.compute_fit_statistics(partials, residuals,
                                                                         start_rejecting)
             self._add_iteration(self.n_iter+1, rms_u, rms_w, chi_sq)
         if self.n_iter == self.n_iter_max and not self.converged:
