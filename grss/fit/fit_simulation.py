@@ -12,7 +12,8 @@ from ..utils import default_kernel_path, grss_path
 from .fit_utils import get_observer_info, get_similarity_stats
 from .fit_ades import special_codes
 
-__all__ = [ 'FitSimulation',
+__all__ = [ 'IterationParams',
+            'FitSimulation',
 ]
 
 class IterationParams:

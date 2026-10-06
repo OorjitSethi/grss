@@ -2,6 +2,21 @@ GRSS Orbit Determination Module (grss.fit)
 ==========================================
 The orbit determination code within GRSS is completely on the Python side of things, but it heavily relies on the C++ propagator binding. Given a small body orbit that needs to be fitted to a set of observations, the module uses the batch least squares algorithm to solve for an updated nominal orbit.
 
+The observation preparation and fitting subfunctions are available through the
+Python ``grss.fit`` package. These functions run in the caller's Python process;
+they do not require an HTTP server. For example::
+
+    from grss.fit import apply_weighting_scheme
+
+    weighted_obs = apply_weighting_scheme(obs_df, verbose=False)
+
+``obs_df`` must be a GRSS optical observation DataFrame with the columns
+described in the function's API documentation. The weighting function updates
+that DataFrame in place and returns it. Other preparation functions have their
+own input requirements and may also mutate the objects passed to them; read
+their individual API entries before calling them outside ``get_optical_obs``.
+Underscore-prefixed helpers remain internal implementation details.
+
 The optical measurements are acquired using the `Minor Planet Center API <https://minorplanetcenter.net/mpcops/documentation/observations-api/>`_, and the radar measurements are acquired using the `JPL Small-body Radar API <https://ssd-api.jpl.nasa.gov/doc/sb_radar.html>`_. The optical astrometry is preprocessed to account for the following :
 
 #. Star catalog biases [#]_

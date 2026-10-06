@@ -18,8 +18,19 @@ from .fit_ades import (
     special_codes,
 )
 
-__all__ = [ 'add_psv_obs',
+__all__ = [ 'get_mpc_raw_data',
+            'validate_ades_mode',
+            'create_optical_obs_df',
+            'add_psv_obs',
             'add_gaia_obs',
+            'debias_obs',
+            'apply_debiasing_scheme',
+            'get_packed_prog_id',
+            'get_unpacked_prog_id',
+            'apply_station_weight_rules',
+            'apply_weighting_scheme',
+            'deweight_obs',
+            'eliminate_obs',
             'get_optical_obs',
 ]
 
@@ -48,7 +59,7 @@ def get_mpc_raw_data(tdes):
         raise ValueError("Error getting MPC XML data.")
     return StringIO(obs_data)
 
-def _ades_mode_check(df):
+def validate_ades_mode(df):
     """
     Check the mode values in the ADES data frame.
 
@@ -160,7 +171,7 @@ def create_optical_obs_df(body_id, optical_obs_file=None, t_min_tdb=None,
     if verbose:
         source = "MPC" if optical_obs_file is None else "file"
         print(f"Read in {len(obs_df)} observations from the {source}.")
-    _ades_mode_check(obs_df)
+    validate_ades_mode(obs_df)
     obs_df = _ades_ast_cat_check(obs_df)
     # filter the data based on the time range
     obs_df.query(f"{t_min_utc} <= obsTimeMJD <= {t_max_utc}", inplace=True)
