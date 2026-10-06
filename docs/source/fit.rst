@@ -17,6 +17,21 @@ own input requirements and may also mutate the objects passed to them; read
 their individual API entries before calling them outside ``get_optical_obs``.
 Underscore-prefixed helpers remain internal implementation details.
 
+The public fitting workflow is composed of these callable stages:
+
+* **Acquire observations:** ``get_mpc_raw_data``, ``get_radar_raw_data``,
+  and ``get_gaia_query_results`` retrieve source data.
+* **Validate and assemble:** ``validate_ades_mode`` and
+  ``flag_unrecognized_ades_catalogs`` inspect ADES fields;
+  ``create_optical_obs_df``, ``add_psv_obs``, ``add_gaia_obs``, and
+  ``add_radar_obs`` build the observation table.
+* **Correct observations:** ``debias_obs``, ``apply_debiasing_scheme``,
+  ``apply_station_weight_rules``, ``apply_weighting_scheme``, ``deweight_obs``,
+  and ``eliminate_obs`` handle biases and measurement weights.
+* **Fit an orbit:** ``get_optical_obs`` prepares the usual optical workflow,
+  and ``FitSimulation`` performs the iterative fit. Conversion and observer
+  utilities are also exported from ``grss.fit``.
+
 The optical measurements are acquired using the `Minor Planet Center API <https://minorplanetcenter.net/mpcops/documentation/observations-api/>`_, and the radar measurements are acquired using the `JPL Small-body Radar API <https://ssd-api.jpl.nasa.gov/doc/sb_radar.html>`_. The optical astrometry is preprocessed to account for the following :
 
 #. Star catalog biases [#]_
