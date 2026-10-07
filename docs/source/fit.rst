@@ -40,6 +40,20 @@ array and removes ``NaN`` entries without changing the input::
 
     valid_values = flatten_valid_observations([[1.0, float('nan')], [2.0, 3.0]])
 
+An initialized ``FitSimulation`` also exposes three solution-conversion
+methods: ``solution_to_state(x_dict)``,
+``solution_to_nongrav_params(x_dict)``, and ``solution_to_events(x_dict)``.
+These return the state vector, non-gravitational parameter object, and event
+tuples used by the propagator. They do not change the fitter's state; the
+fitter's Cartesian/cometary mode and fixed propagation parameters determine
+how a supplied solution dictionary is interpreted.
+
+For numerical derivatives, ``get_perturbed_state(key)`` returns the positive
+and negative solutions for one fitted parameter plus the finite-difference
+step. ``get_perturbation_info()`` returns those tuples for every parameter in
+the current nominal solution, in solution-key order. Neither method changes
+the nominal solution.
+
 For an initialized ``FitSimulation``, ``compute_residuals_and_partials()``
 evaluates the current nominal orbit without applying a least-squares state
 correction. It returns the residuals and partial derivatives, stores the

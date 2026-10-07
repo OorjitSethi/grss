@@ -947,9 +947,12 @@ class FitSimulation:
                                                         observer_info_future)
         return prop_sim_past, prop_sim_future
 
-    def _x_dict_to_state(self, x_dict):
+    def solution_to_state(self, x_dict):
         """
-        Convert a dictionary of nominal state to a state vector.
+        Convert a solution dictionary to the six-element state used by GRSS.
+
+        The coordinate type (Cartesian or cometary) is selected when this
+        ``FitSimulation`` is initialized. This method does not change the fit.
 
         Parameters
         ----------
@@ -989,9 +992,12 @@ class FitSimulation:
             raise ValueError("fit_cartesian or fit_cometary must be True")
         return state
 
-    def _x_dict_to_nongrav_params(self, x_dict):
+    def solution_to_nongrav_params(self, x_dict):
         """
-        Convert a dictionary of nominal state to non-gravitational parameters.
+        Build non-gravitational parameters from a solution dictionary.
+
+        Parameters absent from ``x_dict`` use this fitter's fixed propagation
+        parameters. This method does not change the fit.
 
         Parameters
         ----------
@@ -1021,9 +1027,13 @@ class FitSimulation:
         nongrav_params.r0_au = self.fixed_propsim_params['r0_au']
         return nongrav_params
 
-    def _x_dict_to_events(self, x_dict):
+    def solution_to_events(self, x_dict):
         """
-        Convert a dictionary of nominal state to events.
+        Build the fitted body's events from a solution dictionary.
+
+        Event definitions come from ``fixed_propsim_params['events']``;
+        fitted values in ``x_dict`` override their corresponding fixed values.
+        This method does not change the fit.
 
         Parameters
         ----------
@@ -1119,9 +1129,13 @@ class FitSimulation:
                 prop_sim_future.add_event(event)
         return prop_sim_past, prop_sim_future
 
-    def _get_perturbed_state(self, key):
+    def get_perturbed_state(self, key):
         """
-        Get the perturbed state for a given nominal state parameter.
+        Get positive and negative finite-difference solutions for one parameter.
+
+        Uses the current nominal solution and the fit's coordinate type. The
+        returned tuples are inputs to numerical partial-derivative propagation;
+        this method does not change the nominal solution.
 
         Parameters
         ----------
@@ -1178,19 +1192,22 @@ class FitSimulation:
         # fd_pert = finite difference perturbation to nominal state for calculating derivatives
         fd_delta = fd_pert
         x_plus[key] = self.x_nom[key]+fd_delta
-        state_plus = self._x_dict_to_state(x_plus)
-        ng_params_plus = self._x_dict_to_nongrav_params(x_plus)
-        events_plus = self._x_dict_to_events(x_plus)
+        state_plus = self.solution_to_state(x_plus)
+        ng_params_plus = self.solution_to_nongrav_params(x_plus)
+        events_plus = self.solution_to_events(x_plus)
         x_minus[key] = self.x_nom[key]-fd_delta
-        state_minus = self._x_dict_to_state(x_minus)
-        ng_params_minus = self._x_dict_to_nongrav_params(x_minus)
-        events_minus = self._x_dict_to_events(x_minus)
+        state_minus = self.solution_to_state(x_minus)
+        ng_params_minus = self.solution_to_nongrav_params(x_minus)
+        events_minus = self.solution_to_events(x_minus)
         return (state_plus, ng_params_plus, events_plus, state_minus,
                     ng_params_minus, events_minus, fd_delta)
 
-    def _get_perturbation_info(self):
+    def get_perturbation_info(self):
         """
-        Get the perturbation information for all nominal state parameters.
+        Get finite-difference solutions for all fitted parameters.
+
+        Results follow the insertion order of ``x_nom`` and use the tuple
+        layout described by ``get_perturbed_state``.
 
         Returns
         -------
@@ -1200,7 +1217,7 @@ class FitSimulation:
         """
         perturbation_info = []
         for key in self.x_nom:
-            pert_result = self._get_perturbed_state(key)
+            pert_result = self.get_perturbed_state(key)
             perturbation_info.append(tuple(pert_result))
         return perturbation_info
 
@@ -1226,9 +1243,9 @@ class FitSimulation:
         # get propagated states
         prop_sim_past, prop_sim_future = self._get_prop_sims()
         # create nominal integ_body object
-        state_nom = self._x_dict_to_state(self.x_nom)
-        ng_params_nom = self._x_dict_to_nongrav_params(self.x_nom)
-        events_nom = self._x_dict_to_events(self.x_nom)
+        state_nom = self.solution_to_state(self.x_nom)
+        ng_params_nom = self.solution_to_nongrav_params(self.x_nom)
+        events_nom = self.solution_to_events(self.x_nom)
         if self.fit_cartesian:
             integ_body_nom = libgrss.IntegBody("integ_body_nom", self.t_sol,
                                             self.fixed_propsim_params['mass'],
@@ -1591,7 +1608,7 @@ class FitSimulation:
             The partials of the observations with respect to the
             initial nominal state.
         """
-        perturbation_info = None if self.analytic_partials else self._get_perturbation_info()
+        perturbation_info = None if self.analytic_partials else self.get_perturbation_info()
         prop_sim_past, prop_sim_future = self._assemble_and_propagate_bodies(perturbation_info)
         self.prop_sims = (prop_sim_past, prop_sim_future)
         # get partials
