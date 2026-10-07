@@ -12,9 +12,27 @@ from ..utils import default_kernel_path, grss_path
 from .fit_utils import get_observer_info, get_similarity_stats
 from .fit_ades import special_codes
 
-__all__ = [ 'IterationParams',
+__all__ = [ 'flatten_valid_observations',
+            'IterationParams',
             'FitSimulation',
 ]
+
+def flatten_valid_observations(arr):
+    """
+    Flatten an observation array and remove NaN values.
+
+    Parameters
+    ----------
+    arr : numpy.ndarray
+        Array of computed observations.
+
+    Returns
+    -------
+    numpy.ndarray
+        One-dimensional array containing the non-NaN values, in row order.
+    """
+    flat = np.asarray(arr).ravel()
+    return flat[~np.isnan(flat)]
 
 class IterationParams:
     """
@@ -664,24 +682,6 @@ class FitSimulation:
                 self._xbar0[idx] = self.prior_est[key] - self.x_init[key]
             self._prior_constant = list(self.x_nom.values())+self._xbar0
         return None
-
-    def _flatten_and_clean(self, arr):
-        """
-        Flatten an array and remove any NaN values.
-
-        Parameters
-        ----------
-        arr : array
-            Array to flatten and clean.
-
-        Returns
-        -------
-        arr : array
-            Flattened and cleaned array.
-        """
-        arr = arr.flatten()
-        arr = arr[~np.isnan(arr)]
-        return arr
 
     def _add_simulated_obs(self):
         """
@@ -1544,8 +1544,8 @@ class FitSimulation:
                                                         integ_body_idx=2*i+1)
             computed_obs_minus, _ = self._get_computed_obs(prop_sim_past, prop_sim_future,
                                                         integ_body_idx=2*i+2)
-            computed_obs_plus = self._flatten_and_clean(computed_obs_plus)
-            computed_obs_minus = self._flatten_and_clean(computed_obs_minus)
+            computed_obs_plus = flatten_valid_observations(computed_obs_plus)
+            computed_obs_minus = flatten_valid_observations(computed_obs_minus)
             # get partials
             partials[:, i] = (computed_obs_plus - computed_obs_minus)/(2*fd_delta)
         return partials

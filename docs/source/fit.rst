@@ -32,6 +32,14 @@ The public fitting workflow is composed of these callable stages:
   and ``FitSimulation`` performs the iterative fit. Conversion and observer
   utilities are also exported from ``grss.fit``.
 
+``flatten_valid_observations`` is an independent array helper used when
+calculating numerical partial derivatives. It flattens a numeric observation
+array and removes ``NaN`` entries without changing the input::
+
+    from grss.fit import flatten_valid_observations
+
+    valid_values = flatten_valid_observations([[1.0, float('nan')], [2.0, 3.0]])
+
 For an initialized ``FitSimulation``, ``compute_residuals_and_partials()``
 evaluates the current nominal orbit without applying a least-squares state
 correction. It returns the residuals and partial derivatives, stores the
