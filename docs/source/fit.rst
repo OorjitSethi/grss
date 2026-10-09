@@ -74,6 +74,34 @@ convergence checks, and outlier rejection. Outlier rejection through
 ``compute_fit_statistics(..., start_rejecting=True)`` requires a covariance
 from a previous correction.
 
+Lower-level ``FitSimulation`` methods are public for callers that need to
+inspect or compose individual stages. Their required order and side effects
+matter because a fitter stores observations, weights, native simulations, and
+iteration history between calls:
+
+* **Setup:** ``check_initial_solution``, ``add_simulated_obs``,
+  ``parse_observation_arrays``, and ``compute_obs_weights`` prepare cached fit
+  state. The constructor runs initial-solution validation, observation parsing,
+  and weight construction. Repeated parsing can append simulated observations
+  again; after changing observations, rebuild weights before propagation.
+* **Propagation:** ``get_prop_sim_past``, ``get_prop_sim_future``, and
+  ``get_prop_sims`` create configured native simulations;
+  ``check_and_add_events`` adds events to those objects; and
+  ``assemble_and_propagate_bodies`` integrates nominal and perturbed bodies.
+  The past or future simulation is ``None`` when no observations fall on that
+  side of the solution epoch.
+* **Measurements and derivatives:** ``get_computed_obs`` reads propagated
+  measurements; ``inflate_uncertainties`` updates optical covariance and
+  weights; ``get_analytic_partials`` and ``get_numeric_partials`` calculate
+  derivatives; and ``get_partials`` selects the configured derivative method.
+  These methods require integrated simulations. Computing nominal observations
+  also inflates applicable uncertainties.
+* **Iteration history:** ``add_iteration`` stores a fit snapshot and
+  ``check_convergence`` updates the convergence flag after a correction.
+
+The old underscore-prefixed spellings remain as compatibility aliases. The
+constructor and complete ``filter_lsq`` workflow use the public spellings.
+
 The optical measurements are acquired using the `Minor Planet Center API <https://minorplanetcenter.net/mpcops/documentation/observations-api/>`_, and the radar measurements are acquired using the `JPL Small-body Radar API <https://ssd-api.jpl.nasa.gov/doc/sb_radar.html>`_. The optical astrometry is preprocessed to account for the following :
 
 #. Star catalog biases [#]_
